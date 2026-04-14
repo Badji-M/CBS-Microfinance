@@ -1,0 +1,198 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+{% block title %}Score {{ client.full_name }}{% endblock %}
+{% block topbar_title %}Résultat du scoring ML{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'clients:list' %}">Clients</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'clients:detail' client.pk %}">{{ client.full_name }}</a></li>
+        <li class="breadcrumb-item active">Score ML</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">Analyse de crédit — {{ client.full_name }}</h1>
+    <p class="page-subtitle">{{ client.get_employment_type_display }} · {{ client.city }} · {{ client.monthly_income|floatformat:0|intcomma }} FCFA/mois</p>
+  </div>
+  <a href="{% url 'clients:detail' client.pk %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Retour fiche client
+  </a>
+</div>
+
+<!-- ACCORD ENTRE MODÈLES -->
+<div class="card mb-4" style="border-left:6px solid {% if result.agreement == 'fort' %}#2E7D32{% elif result.agreement == 'modéré' %}#1565C0{% else %}#C62828{% endif %}">
+  <div class="card-body d-flex align-items-start gap-3">
+    <div style="font-size:32px;flex-shrink:0;color:{% if result.agreement == 'fort' %}#2E7D32{% elif result.agreement == 'modéré' %}#1565C0{% else %}#C62828{% endif %}">
+      <i class="bi {% if result.agreement == 'fort' %}bi-check-circle-fill{% elif result.agreement == 'modéré' %}bi-exclamation-circle-fill{% else %}bi-x-circle-fill{% endif %}"></i>
+    </div>
+    <div class="flex-grow-1">
+      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+        <span style="font-weight:700;font-size:15px">
+          Accord entre modèles :
+          <span class="badge bg-{% if result.agreement == 'fort' %}success{% elif result.agreement == 'modéré' %}info{% else %}danger{% endif %}">
+            {{ result.agreement|capfirst }}
+          </span>
+        </span>
+        {% if result.requires_human_review %}
+        <span class="badge bg-warning text-dark">
+          <i class="bi bi-person-check me-1"></i>Analyse humaine requise
+        </span>
+        {% endif %}
+      </div>
+      <p style="font-size:13px;color:#5A6875;margin:0">{{ result.agreement_detail }}</p>
+    </div>
+    <div style="text-align:center;flex-shrink:0">
+      <div class="mono fw-bold" style="font-size:20px">{{ result.score_difference|floatformat:3 }}</div>
+      <div style="font-size:10px;color:#7B8C9E;text-transform:uppercase">Écart scores</div>
+    </div>
+  </div>
+</div>
+
+<!-- SCORES CÔTE À CÔTE -->
+<div class="row g-3 mb-4">
+
+  <!-- Random Forest -->
+  <div class="col-12 col-md-6">
+    <div class="card h-100" style="border-top:4px solid {% if result.rf_color == 'success' %}#2E7D32{% elif result.rf_color == 'info' %}#1565C0{% elif result.rf_color == 'warning' %}#F9A825{% else %}#C62828{% endif %}">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-diagram-3 text-primary" style="font-size:18px"></i>
+        <h3 class="card-title">Random Forest</h3>
+        <span class="badge bg-primary ms-auto" style="font-size:10px">100 arbres</span>
+      </div>
+      <div class="card-body text-center py-4">
+        <div style="position:relative;display:inline-block;margin-bottom:16px">
+          <svg viewBox="0 0 140 140" width="140" height="140">
+            <circle cx="70" cy="70" r="58" fill="none" stroke="#E8EDF2" stroke-width="10" transform="rotate(-90 70 70)"/>
+            <circle cx="70" cy="70" r="58" fill="none"
+              stroke="{% if result.rf_color == 'success' %}#2E7D32{% elif result.rf_color == 'info' %}#1565C0{% elif result.rf_color == 'warning' %}#F9A825{% else %}#C62828{% endif %}"
+              stroke-width="10"
+              stroke-dasharray="{% widthratio result.rf_score 1 364 %} 364"
+              stroke-linecap="round" transform="rotate(-90 70 70)"/>
+          </svg>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+            <div class="mono" style="font-size:30px;font-weight:700">{{ result.rf_score_pct }}%</div>
+          </div>
+        </div>
+        <div><span class="badge bg-{{ result.rf_color }}" style="font-size:13px;padding:6px 16px">Risque {{ result.rf_risk }}</span></div>
+        <div style="font-size:13px;font-weight:600;color:#5A6875;margin-top:10px">{{ result.rf_recommendation }}</div>
+        {% if result.metrics.random_forest %}
+        <div class="row g-2 mt-3">
+          <div class="col-4"><div style="background:#F0F4F8;border-radius:8px;padding:8px"><div class="mono fw-bold" style="font-size:13px">{{ result.metrics.random_forest.auc }}</div><div style="font-size:9px;color:#7B8C9E">AUC</div></div></div>
+          <div class="col-4"><div style="background:#F0F4F8;border-radius:8px;padding:8px"><div class="mono fw-bold" style="font-size:13px">{{ result.metrics.random_forest.f1 }}</div><div style="font-size:9px;color:#7B8C9E">F1</div></div></div>
+          <div class="col-4"><div style="background:#F0F4F8;border-radius:8px;padding:8px"><div class="mono fw-bold" style="font-size:13px">{{ result.metrics.random_forest.precision }}</div><div style="font-size:9px;color:#7B8C9E">Précision</div></div></div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Régression Logistique -->
+  <div class="col-12 col-md-6">
+    {% if result.lr_score is not None %}
+    <div class="card h-100" style="border-top:4px solid {% if result.lr_color == 'success' %}#2E7D32{% elif result.lr_color == 'info' %}#1565C0{% elif result.lr_color == 'warning' %}#F9A825{% else %}#C62828{% endif %}">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-graph-up text-secondary" style="font-size:18px"></i>
+        <h3 class="card-title">Régression Logistique</h3>
+        <span class="badge bg-secondary ms-auto" style="font-size:10px">Linéaire</span>
+      </div>
+      <div class="card-body text-center py-4">
+        <div style="position:relative;display:inline-block;margin-bottom:16px">
+          <svg viewBox="0 0 140 140" width="140" height="140">
+            <circle cx="70" cy="70" r="58" fill="none" stroke="#E8EDF2" stroke-width="10" transform="rotate(-90 70 70)"/>
+            <circle cx="70" cy="70" r="58" fill="none"
+              stroke="{% if result.lr_color == 'success' %}#2E7D32{% elif result.lr_color == 'info' %}#1565C0{% elif result.lr_color == 'warning' %}#F9A825{% else %}#C62828{% endif %}"
+              stroke-width="10"
+              stroke-dasharray="{% widthratio result.lr_score 1 364 %} 364"
+              stroke-linecap="round" transform="rotate(-90 70 70)"/>
+          </svg>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+            <div class="mono" style="font-size:30px;font-weight:700">{{ result.lr_score_pct }}%</div>
+          </div>
+        </div>
+        <div><span class="badge bg-{{ result.lr_color }}" style="font-size:13px;padding:6px 16px">Risque {{ result.lr_risk }}</span></div>
+        <div style="font-size:13px;font-weight:600;color:#5A6875;margin-top:10px">{{ result.lr_recommendation }}</div>
+        {% if result.metrics.logistic_regression %}
+        <div class="row g-2 mt-3">
+          <div class="col-4"><div style="background:#F0F4F8;border-radius:8px;padding:8px"><div class="mono fw-bold" style="font-size:13px">{{ result.metrics.logistic_regression.auc }}</div><div style="font-size:9px;color:#7B8C9E">AUC</div></div></div>
+          <div class="col-4"><div style="background:#F0F4F8;border-radius:8px;padding:8px"><div class="mono fw-bold" style="font-size:13px">{{ result.metrics.logistic_regression.f1 }}</div><div style="font-size:9px;color:#7B8C9E">F1</div></div></div>
+          <div class="col-4"><div style="background:#F0F4F8;border-radius:8px;padding:8px"><div class="mono fw-bold" style="font-size:13px">{{ result.metrics.logistic_regression.precision }}</div><div style="font-size:9px;color:#7B8C9E">Précision</div></div></div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="card h-100">
+      <div class="card-body d-flex align-items-center justify-content-center" style="min-height:280px">
+        <div class="text-center text-muted">
+          <i class="bi bi-exclamation-circle" style="font-size:36px;display:block;margin-bottom:8px"></i>
+          <p>Régression Logistique non disponible</p>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- RECOMMANDATION FINALE -->
+<div class="card mb-4" style="border-left:6px solid {% if result.final_color == 'success' %}#2E7D32{% elif result.final_color == 'info' %}#1565C0{% elif result.final_color == 'warning' %}#F9A825{% else %}#C62828{% endif %}">
+  <div class="card-body d-flex align-items-center gap-4">
+    <div style="font-size:36px;color:{% if result.requires_human_review %}#F57C00{% elif result.final_color == 'success' %}#2E7D32{% elif result.final_color == 'info' %}#1565C0{% elif result.final_color == 'warning' %}#F9A825{% else %}#C62828{% endif %}">
+      <i class="bi {% if result.requires_human_review %}bi-search{% elif result.final_color == 'success' %}bi-check-circle-fill{% elif result.final_color == 'info' %}bi-file-text{% elif result.final_color == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-x-circle-fill{% endif %}"></i>
+    </div>
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;color:#7B8C9E;font-weight:700;letter-spacing:1px">Recommandation finale (basée sur Random Forest)</div>
+      <div style="font-size:20px;font-weight:700;color:var(--brand-dark);margin-top:4px">{{ result.final_recommendation }}</div>
+      {% if result.requires_human_review %}
+      <div style="font-size:13px;color:#E65100;margin-top:4px">
+        <i class="bi bi-info-circle me-1"></i>Les deux modèles sont en désaccord. Un agent senior doit examiner ce dossier.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES + IMPORTANCE -->
+<div class="row g-3">
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="bi bi-sliders me-2 text-primary"></i>Variables clés du client</h3></div>
+      <div class="card-body p-0">
+        <table class="data-table">
+          <thead><tr><th>Variable</th><th>Valeur</th><th>Signal</th></tr></thead>
+          <tbody>
+            <tr><td style="font-size:13px">Revenu mensuel</td><td class="mono">{{ result.features.monthly_income|floatformat:0|intcomma }} FCFA</td><td><span class="badge bg-{% if result.features.monthly_income > 200000 %}success{% elif result.features.monthly_income > 80000 %}warning text-dark{% else %}danger{% endif %}" style="font-size:10px">{% if result.features.monthly_income > 200000 %}Bon{% elif result.features.monthly_income > 80000 %}Moyen{% else %}Faible{% endif %}</span></td></tr>
+            <tr><td style="font-size:13px">Revenu disponible</td><td class="mono">{{ result.features.disposable_income|floatformat:0|intcomma }} FCFA</td><td><span class="badge bg-{% if result.features.disposable_income > 50000 %}success{% elif result.features.disposable_income > 0 %}warning text-dark{% else %}danger{% endif %}" style="font-size:10px">{% if result.features.disposable_income > 50000 %}Suffisant{% elif result.features.disposable_income > 0 %}Limite{% else %}Négatif{% endif %}</span></td></tr>
+            <tr><td style="font-size:13px">Ratio dette/revenu</td><td class="mono">{{ result.features.debt_to_income_ratio|floatformat:3 }}</td><td><span class="badge bg-{% if result.features.debt_to_income_ratio < 0.3 %}success{% elif result.features.debt_to_income_ratio < 0.6 %}warning text-dark{% else %}danger{% endif %}" style="font-size:10px">{% if result.features.debt_to_income_ratio < 0.3 %}Acceptable{% elif result.features.debt_to_income_ratio < 0.6 %}Élevé{% else %}Critique{% endif %}</span></td></tr>
+            <tr><td style="font-size:13px">Défauts passés</td><td class="mono">{{ result.features.previous_default_rate|floatformat:2 }}</td><td><span class="badge bg-{% if result.features.previous_default_rate == 0 %}success{% else %}danger{% endif %}" style="font-size:10px">{% if result.features.previous_default_rate == 0 %}Aucun{% else %}Oui{% endif %}</span></td></tr>
+            <tr><td style="font-size:13px">Retard moyen</td><td class="mono">{{ result.features.avg_days_late|floatformat:1 }} jours</td><td><span class="badge bg-{% if result.features.avg_days_late < 5 %}success{% elif result.features.avg_days_late < 15 %}warning text-dark{% else %}danger{% endif %}" style="font-size:10px">{% if result.features.avg_days_late < 5 %}Bon{% elif result.features.avg_days_late < 15 %}Modéré{% else %}Mauvais{% endif %}</span></td></tr>
+            <tr><td style="font-size:13px">Années d'activité</td><td class="mono">{{ result.features.years_employed }} ans</td><td><span class="badge bg-{% if result.features.years_employed >= 3 %}success{% elif result.features.years_employed >= 1 %}warning text-dark{% else %}secondary{% endif %}" style="font-size:10px">{% if result.features.years_employed >= 3 %}Stable{% else %}Récent{% endif %}</span></td></tr>
+            <tr><td style="font-size:13px">Compte bancaire</td><td class="mono">{% if result.features.has_bank_account %}Oui{% else %}Non{% endif %}</td><td><span class="badge bg-{% if result.features.has_bank_account %}success{% else %}secondary{% endif %}" style="font-size:10px">{% if result.features.has_bank_account %}+{% else %}—{% endif %}</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% if result.feature_importance %}
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="bi bi-bar-chart me-2 text-primary"></i>Importance des features (Random Forest)</h3></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:#7B8C9E;margin-bottom:12px">Plus la barre est longue, plus cette variable a pesé dans la décision.</p>
+        {% for feature, importance in result.feature_importance.items %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div style="width:145px;font-size:11px;color:#5A6875;text-align:right;flex-shrink:0">{{ feature }}</div>
+          <div style="flex:1;height:10px;background:#E8EDF2;border-radius:5px;overflow:hidden">
+            <div style="height:100%;background:var(--brand-blue);border-radius:5px;width:{% widthratio importance 0.35 100 %}%;max-width:100%"></div>
+          </div>
+          <div class="mono" style="font-size:11px;color:#7B8C9E;width:45px;flex-shrink:0">{{ importance|floatformat:4 }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

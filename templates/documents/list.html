@@ -1,0 +1,57 @@
+{% extends "base/base.html" %}
+{% block title %}Documents PDF — MicroFinance{% endblock %}
+{% block topbar_title %}Documents{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Contrats générés</h1>
+    <p class="page-subtitle">{{ contracts|length }} contrat{{ contracts|length|pluralize }} PDF</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body p-0">
+    {% if contracts %}
+    <table class="data-table">
+      <thead>
+        <tr><th>Fichier</th><th>Prêt</th><th>Client</th><th>Statut</th><th>Taille</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for c in contracts %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-file-earmark-pdf-fill text-danger" style="font-size:20px"></i>
+              <span style="font-size:12px;font-family:var(--font-mono)">{{ c.filename }}</span>
+            </div>
+          </td>
+          <td>{% if c.loan %}<a href="{% url 'loans:detail' c.loan.pk %}" class="mono" style="font-size:12px;color:#1565C0;font-weight:700">{{ c.loan.loan_number }}</a>{% else %}—{% endif %}</td>
+          <td style="font-size:13px">{% if c.loan %}{{ c.loan.client.full_name }}{% else %}—{% endif %}</td>
+          <td>{% if c.loan %}<span class="status-badge {{ c.loan.status }}">{{ c.loan.get_status_display }}</span>{% else %}—{% endif %}</td>
+          <td style="font-size:12px;color:#7B8C9E" class="mono">{{ c.size|filesizeformat }}</td>
+          <td>
+            {% if c.loan %}
+            <div class="d-flex gap-1">
+              <a href="{% url 'documents:download' c.loan.pk %}" class="btn btn-sm btn-danger" style="font-size:11px">
+                <i class="bi bi-download me-1"></i>PDF
+              </a>
+              <a href="{% url 'documents:generate' c.loan.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:11px" title="Régénérer">
+                <i class="bi bi-arrow-clockwise"></i>
+              </a>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state py-5">
+      <i class="bi bi-file-earmark-pdf" style="font-size:48px;color:#E8EDF2;display:block;margin-bottom:12px"></i>
+      <p style="font-weight:600;color:#9BA8B5">Aucun contrat généré</p>
+      <p class="text-muted" style="font-size:13px">Allez sur la fiche d'un prêt approuvé pour générer un contrat PDF.</p>
+      <a href="{% url 'loans:list' %}" class="btn btn-primary btn-sm mt-2">Voir les prêts</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

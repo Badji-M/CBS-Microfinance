@@ -1,0 +1,131 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+
+{% block title %}Prêts — MicroFinance{% endblock %}
+{% block topbar_title %}Prêts{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Portefeuille de prêts</h1>
+    <p class="page-subtitle">{{ total_count }} prêt{{ total_count|pluralize }}</p>
+  </div>
+  <a href="{% url 'loans:create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-circle me-2"></i>Nouveau prêt
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-3">{{ form.q }}</div>
+      <div class="col-6 col-md-2">{{ form.status }}</div>
+      <div class="col-6 col-md-2">{{ form.date_from }}</div>
+      <div class="col-6 col-md-2">{{ form.date_to }}</div>
+      <div class="col-6 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+          <i class="bi bi-search me-1"></i>Filtrer
+        </button>
+        <a href="{% url 'loans:list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x"></i></a>
+        <a href="{% url 'loans:overdue' %}" class="btn btn-danger btn-sm">
+          <i class="bi bi-exclamation-triangle me-1"></i>Impayés
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="card-body p-0">
+    {% if page_obj %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>N° Prêt</th>
+          <th>Client</th>
+          <th>Produit</th>
+          <th>Montant</th>
+          <th>Durée</th>
+          <th>Taux</th>
+          <th>Score</th>
+          <th>Statut</th>
+          <th>Date</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for loan in page_obj %}
+        <tr>
+          <td class="mono" style="font-size:12px;font-weight:700;color:#1565C0">
+            {{ loan.loan_number }}
+          </td>
+          <td>
+            <div style="font-size:13px;font-weight:600">{{ loan.client.full_name }}</div>
+            <div style="font-size:11px;color:#7B8C9E">{{ loan.client.phone }}</div>
+          </td>
+          <td style="font-size:12px">{{ loan.product.name }}</td>
+          <td>
+            <div class="text-money" style="font-size:13px">{{ loan.principal|floatformat:0|intcomma }}</div>
+            <div style="font-size:10px;color:#7B8C9E">FCFA</div>
+          </td>
+          <td style="font-size:13px">{{ loan.duration_months }}M</td>
+          <td style="font-size:12px;font-family:var(--font-mono)">
+            {{ loan.interest_rate|floatformat:2 }}%/M
+          </td>
+          <td>
+            {% if loan.credit_score_at_application %}
+            <span style="font-size:12px;font-family:var(--font-mono);font-weight:700;
+              color:{% if loan.credit_score_at_application >= 0.7 %}#2E7D32{% elif loan.credit_score_at_application >= 0.5 %}#F9A825{% else %}#C62828{% endif %}">
+              {{ loan.credit_score_at_application|floatformat:1 }}%
+            </span>
+            {% else %}
+            <span class="text-muted" style="font-size:11px">—</span>
+            {% endif %}
+          </td>
+          <td><span class="status-badge {{ loan.status }}">{{ loan.get_status_display }}</span></td>
+          <td style="font-size:11px;color:#7B8C9E">{{ loan.application_date|date:"d/m/Y" }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{% url 'loans:detail' loan.pk %}" class="btn btn-sm btn-outline-primary" style="padding:2px 8px">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if loan.status == 'pending' %}
+              <a href="{% url 'loans:approve' loan.pk %}" class="btn btn-sm btn-success" style="padding:2px 8px" title="Approuver">
+                <i class="bi bi-check"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if page_obj.has_other_pages %}
+    <div class="d-flex justify-content-between align-items-center px-4 py-3 border-top">
+      <small class="text-muted">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</small>
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
+          {% endif %}
+          <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+          {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-credit-card"></i>
+      <p>Aucun prêt trouvé</p>
+      <a href="{% url 'loans:create' %}" class="btn btn-primary btn-sm mt-2">Créer un prêt</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

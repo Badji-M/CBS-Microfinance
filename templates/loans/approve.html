@@ -1,0 +1,143 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+
+{% block title %}Approuver {{ loan.loan_number }} — MicroFinance{% endblock %}
+{% block topbar_title %}Approbation de prêt{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'loans:list' %}">Prêts</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'loans:detail' loan.pk %}">{{ loan.loan_number }}</a></li>
+        <li class="breadcrumb-item active">Approbation</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">Approbation du prêt</h1>
+  </div>
+</div>
+
+<div class="row g-4 justify-content-center">
+  <div class="col-12 col-lg-8">
+
+    <!-- Applicant Summary -->
+    <div class="card mb-4" style="border-left:4px solid var(--brand-blue)">
+      <div class="card-body">
+        <div class="row g-3 align-items-center">
+          <div class="col-auto">
+            <div class="user-avatar" style="width:52px;height:52px;font-size:18px;background:#E3F2FD;color:#1565C0">
+              {{ loan.client.first_name|slice:":1" }}{{ loan.client.last_name|slice:":1" }}
+            </div>
+          </div>
+          <div class="col">
+            <div style="font-size:18px;font-weight:700">{{ loan.client.full_name }}</div>
+            <div style="font-size:13px;color:#7B8C9E">{{ loan.client.get_employment_type_display }} — {{ loan.client.city }}</div>
+          </div>
+          <div class="col-auto text-end">
+            {% if loan.credit_score_at_application %}
+            <div style="font-size:28px;font-weight:700;font-family:var(--font-mono);
+              color:{% if loan.credit_score_at_application >= 0.7 %}#2E7D32{% elif loan.credit_score_at_application >= 0.5 %}#F9A825{% else %}#C62828{% endif %}">
+              {{ loan.credit_score_at_application|floatformat:1 }}%
+            </div>
+            <div style="font-size:11px;color:#7B8C9E">Score ML</div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="separator"></div>
+        <div class="row g-3 text-center">
+          <div class="col-3">
+            <div style="font-size:11px;color:#7B8C9E;text-transform:uppercase">Montant demandé</div>
+            <div class="text-money" style="font-size:16px;font-weight:700">{{ loan.requested_amount|floatformat:0|intcomma }}</div>
+            <div style="font-size:10px;color:#7B8C9E">FCFA</div>
+          </div>
+          <div class="col-3">
+            <div style="font-size:11px;color:#7B8C9E;text-transform:uppercase">Durée</div>
+            <div class="mono" style="font-size:16px;font-weight:700">{{ loan.duration_months }}</div>
+            <div style="font-size:10px;color:#7B8C9E">mois</div>
+          </div>
+          <div class="col-3">
+            <div style="font-size:11px;color:#7B8C9E;text-transform:uppercase">Revenus</div>
+            <div class="text-money" style="font-size:16px;font-weight:700">{{ loan.client.monthly_income|floatformat:0|intcomma }}</div>
+            <div style="font-size:10px;color:#7B8C9E">FCFA/mois</div>
+          </div>
+          <div class="col-3">
+            <div style="font-size:11px;color:#7B8C9E;text-transform:uppercase">Ratio dette</div>
+            <div class="mono" style="font-size:16px;font-weight:700;
+              color:{% if loan.client.debt_to_income_ratio < 0.3 %}#2E7D32{% elif loan.client.debt_to_income_ratio < 0.6 %}#F9A825{% else %}#C62828{% endif %}">
+              {{ loan.client.debt_to_income_ratio|floatformat:2 }}
+            </div>
+            <div style="font-size:10px;color:#7B8C9E">DTI</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credit Decision -->
+    {% if loan.credit_score_at_application %}
+    <div class="card mb-4 {% if loan.credit_score_at_application >= 0.6 %}border-success{% elif loan.credit_score_at_application >= 0.4 %}border-warning{% else %}border-danger{% endif %}" style="border-width:2px">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3">
+          <div style="font-size:32px">
+            {% if loan.credit_score_at_application >= 0.7 %}✅{% elif loan.credit_score_at_application >= 0.5 %}⚠️{% else %}❌{% endif %}
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:15px">
+              {% if loan.credit_score_at_application >= 0.7 %}Recommandation ML : Approuver
+              {% elif loan.credit_score_at_application >= 0.5 %}Recommandation ML : Approbation conditionnelle
+              {% else %}Recommandation ML : Prudence — risque élevé{% endif %}
+            </div>
+            <div style="font-size:13px;color:#5A6875">
+              Score de crédit : <strong>{{ loan.credit_score_at_application|floatformat:1 }}%</strong> —
+              Niveau de risque : <strong>{{ loan.risk_level|default:"Non évalué" }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Approval Form -->
+    <div class="card mb-4">
+      <div class="card-header" style="background:var(--brand-dark)">
+        <h3 class="card-title" style="color:white"><i class="bi bi-check-circle me-2"></i>Décision d'approbation</h3>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Montant approuvé (FCFA) *</label>
+              {{ form.approved_amount }}
+              <small class="text-muted">Peut être différent du montant demandé ({{ loan.requested_amount|floatformat:0|intcomma }} FCFA)</small>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Date de décaissement *</label>
+              {{ form.disbursement_date }}
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Date 1ère échéance *</label>
+              {{ form.first_payment_date }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes d'approbation</label>
+              {{ form.notes }}
+            </div>
+          </div>
+          <div class="d-flex gap-3 mt-4">
+            <a href="{% url 'loans:reject' loan.pk %}" class="btn btn-outline-danger">
+              <i class="bi bi-x-circle me-1"></i>Rejeter
+            </a>
+            <a href="{% url 'loans:detail' loan.pk %}" class="btn btn-outline-secondary">
+              Annuler
+            </a>
+            <button type="submit" class="btn btn-success ms-auto px-4">
+              <i class="bi bi-check-circle me-2"></i>Confirmer l'approbation
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

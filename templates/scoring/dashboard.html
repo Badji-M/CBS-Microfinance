@@ -1,0 +1,218 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+{% load dashboard_tags %}
+{% block title %}Scoring ML — MicroFinance{% endblock %}
+{% block topbar_title %}Scoring de crédit ML{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Tableau de bord — Scoring ML</h1>
+    <p class="page-subtitle">Modèles Random Forest + Régression Logistique</p>
+  </div>
+  <div class="d-flex gap-2">
+    <form method="post" action="{% url 'scoring:batch_score' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-arrow-clockwise me-1"></i>Scorer tous les clients
+      </button>
+    </form>
+    <form method="post" action="{% url 'scoring:train' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="bi bi-cpu me-1"></i>Entraîner les modèles
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Model Status -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-6">
+    <div class="card" style="border-left:4px solid {% if rf_model_exists %}#2E7D32{% else %}#E65100{% endif %}">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div style="font-size:32px"><i class="bi bi-tree" style="color:#F9A825"></i></div>
+        <div>
+          <div style="font-weight:700;font-size:15px">Random Forest</div>
+          <div style="font-size:13px;color:{% if rf_model_exists %}#2E7D32{% else %}#E65100{% endif %}">
+            {% if rf_model_exists %}<i class="bi bi-check-circle"></i> Modèle chargé et prêt{% else %}<i class="bi bi-exclamation-circle"></i> Non entraîné — cliquez sur "Entraîner"{% endif %}
+          </div>
+          <div style="font-size:11px;color:#7B8C9E;margin-top:2px">100 arbres • Profondeur max 10 • Poids équilibrés</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-6">
+    <div class="card" style="border-left:4px solid {% if lr_model_exists %}#2E7D32{% else %}#E65100{% endif %}">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div style="font-size:32px"><i class="bi bi-graph-up" style="color:#1565C0"></i></div>
+        <div>
+          <div style="font-weight:700;font-size:15px">Régression Logistique</div>
+          <div style="font-size:13px;color:{% if lr_model_exists %}#2E7D32{% else %}#E65100{% endif %}">
+            {% if lr_model_exists %}<i class="bi bi-check-circle"></i> Modèle chargé et prêt{% else %}<i class="bi bi-exclamation-circle"></i> Non entraîné{% endif %}
+          </div>
+          <div style="font-size:11px;color:#7B8C9E;margin-top:2px">C=1.0 • Max iter 1000 • Standardisé</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KPIs + Charts -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <h3 class="card-title"><i class="bi bi-bar-chart me-2 text-primary"></i>Distribution des scores</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="scoreChart" height="220"></canvas>
+        <div class="mt-3">
+          <div class="d-flex justify-content-between mb-2">
+            <span style="font-size:12px"><span style="color:#2E7D32">●</span> Excellent (≥80%)</span>
+            <strong>{{ score_buckets.excellent }}</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span style="font-size:12px"><span style="color:#1565C0">●</span> Bon (60-80%)</span>
+            <strong>{{ score_buckets.bon }}</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span style="font-size:12px"><span style="color:#F9A825">●</span> Moyen (40-60%)</span>
+            <strong>{{ score_buckets.moyen }}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span style="font-size:12px"><span style="color:#C62828">●</span> Risqué (&lt;40%)</span>
+            <strong>{{ score_buckets.risque }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-7">
+    <div class="row g-3">
+      <div class="col-6">
+        <div class="kpi-card blue">
+          <div class="kpi-icon blue"><i class="bi bi-people-fill"></i></div>
+          <div class="kpi-value" style="font-size:28px">{{ total_scored }}</div>
+          <div class="kpi-label">Clients scorés</div>
+          <div class="kpi-change up">
+            <i class="bi bi-arrow-up"></i>
+            {{ total_scored }} / {{ total_clients }} ({{ total_scored|floatformat:0 }})
+          </div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="kpi-card green">
+          <div class="kpi-icon green"><i class="bi bi-graph-up"></i></div>
+          <div class="kpi-value mono" style="font-size:28px">
+            {% if avg_good_score %}{{ avg_good_score }}%{% else %}N/A{% endif %}
+          </div>
+          <div class="kpi-label">Score moy. bons payeurs</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="kpi-card orange">
+          <div class="kpi-icon orange"><i class="bi bi-graph-down"></i></div>
+          <div class="kpi-value mono" style="font-size:28px">
+            {% if avg_bad_score %}{{ avg_bad_score }}%{% else %}N/A{% endif %}
+          </div>
+          <div class="kpi-label">Score moy. mauvais payeurs</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="kpi-card dark">
+          <div class="kpi-icon dark"><i class="bi bi-cpu"></i></div>
+          <div class="kpi-value mono" style="font-size:28px">21</div>
+          <div class="kpi-label">Features ML utilisées</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features info -->
+    <div class="card mt-3">
+      <div class="card-header"><h3 class="card-title"><i class="bi bi-list-check me-2 text-primary"></i>Features du modèle</h3></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:#7B8C9E;margin-bottom:12px"><strong>21 variables</strong> utilisées pour prédire le risque de crédit :</p>
+        <p style="font-size:12px;line-height:1.8">Âge • Genre • Statut matrimonial • Personnes à charge • Type emploi • Éducation • Années activité • Revenu mensuel • Dépenses mensuelles • Revenu disponible • Ratio dette/revenu • Autres dettes • Compte bancaire • Nb prêts passés • Prêts actifs • Taux de défaut • Jours retard moy. • Montant demandé • Durée demandée • Ratio revenu/prêt • Interaction âge-revenu</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent scored clients -->
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <h3 class="card-title"><i class="bi bi-clock-history me-2 text-primary"></i>Clients récemment scorés</h3>
+    <a href="{% url 'clients:list' %}" class="btn btn-sm btn-outline-primary">Tous les clients</a>
+  </div>
+  <div class="card-body p-0">
+    <table class="data-table">
+      <thead>
+        <tr><th>Client</th><th>Score ML</th><th>Niveau de risque</th><th>Revenu mensuel</th><th>Prêts actifs</th><th>Évalué le</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for client in recent_scored %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="user-avatar" style="width:30px;height:30px;font-size:11px;background:#E3F2FD;color:#1565C0">
+                {{ client.first_name|slice:":1" }}{{ client.last_name|slice:":1" }}
+              </div>
+              <div style="font-size:13px;font-weight:600">{{ client.full_name }}</div>
+            </div>
+          </td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div style="width:60px;height:6px;background:#E8EDF2;border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:{{ client.credit_score|floatformat:0|stringformat:'s' }}%;
+                  background:{% if client.credit_score >= 0.8 %}#2E7D32{% elif client.credit_score >= 0.6 %}#1565C0{% elif client.credit_score >= 0.4 %}#F9A825{% else %}#C62828{% endif %}"></div>
+              </div>
+              <span class="mono" style="font-size:13px;font-weight:700">{{ client.credit_score|floatformat:1 }}%</span>
+            </div>
+          </td>
+          <td>
+            <span class="badge bg-{% if client.credit_score >= 0.80 %}success{% elif client.credit_score >= 0.60 %}info{% elif client.credit_score >= 0.40 %}warning{% else %}danger{% endif %}" style="font-size:11px">
+              {% if client.credit_score >= 0.80 %}Excellent{% elif client.credit_score >= 0.60 %}Bon{% elif client.credit_score >= 0.40 %}Moyen{% else %}Risqué{% endif %}
+            </span>
+          </td>
+          <td class="mono" style="font-size:12px">{{ client.monthly_income|floatformat:0|intcomma }} FCFA</td>
+          <td style="font-size:12px">{{ client.active_loan_count }}</td>
+          <td style="font-size:11px;color:#7B8C9E">{{ client.credit_score_updated_at|date:"d/m/Y H:i" }}</td>
+          <td>
+            <a href="{% url 'scoring:score_client' client.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:11px;padding:2px 8px">
+              <i class="bi bi-arrow-clockwise"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center py-5 text-muted">Aucun client scoré — cliquez sur "Scorer tous les clients"</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const chartData = {{ score_chart_data|safe }};
+new Chart(document.getElementById('scoreChart'), {
+  type: 'doughnut',
+  data: {
+    labels: chartData.labels,
+    datasets: [{
+      data: chartData.values,
+      backgroundColor: chartData.colors,
+      borderWidth: 0,
+      spacing: 3,
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '68%',
+    plugins: { legend: { display: false } }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+{% block title %}Paiement — {{ loan.loan_number }}{% endblock %}
+{% block topbar_title %}Enregistrement paiement{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'loans:list' %}">Prêts</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'loans:detail' loan.pk %}">{{ loan.loan_number }}</a></li>
+        <li class="breadcrumb-item active">Paiement</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">Enregistrer un paiement</h1>
+    <p class="page-subtitle">{{ loan.client.full_name }} — {{ loan.loan_number }}</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title"><i class="bi bi-cash-coin me-2 text-primary"></i>Détails du paiement</h3>
+      </div>
+      <div class="card-body">
+        {% if next_installment %}
+        <div class="alert alert-info d-flex align-items-center gap-3 mb-4" style="border-radius:10px">
+          <div style="font-size:24px">📅</div>
+          <div>
+            <div style="font-weight:700">Prochaine échéance — N° {{ next_installment.installment_number }}</div>
+            <div style="font-size:13px">
+              Dû le <strong>{{ next_installment.due_date|date:"d/m/Y" }}</strong>
+              — Montant : <strong class="text-money">{{ next_installment.amount_due|floatformat:0|intcomma }} FCFA</strong>
+              {% if next_installment.is_overdue %}
+                <span class="badge bg-danger ms-2">En retard</span>
+              {% endif %}
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-primary ms-auto" onclick="fillAmount({{ next_installment.amount_due }})">
+            Remplir
+          </button>
+        </div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label">Date de paiement *</label>
+              {{ form.payment_date }}
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Mode de paiement *</label>
+              {{ form.payment_method }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Montant payé (FCFA) *</label>
+              {{ form.amount_paid }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Référence transaction</label>
+              {{ form.reference }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              {{ form.notes }}
+            </div>
+          </div>
+          <div class="d-flex gap-3 mt-4">
+            <a href="{% url 'loans:detail' loan.pk %}" class="btn btn-outline-secondary">Annuler</a>
+            <button type="submit" class="btn btn-primary ms-auto px-4">
+              <i class="bi bi-check-circle me-2"></i>Enregistrer le paiement
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loan status panel -->
+  <div class="col-12 col-lg-5">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">État du prêt</h3></div>
+      <div class="card-body">
+        <div class="row g-2 text-center mb-3">
+          <div class="col-6">
+            <div style="background:#E3F2FD;border-radius:8px;padding:12px">
+              <div class="text-money" style="font-size:16px;font-weight:700;color:#1565C0">
+                {{ loan.outstanding_balance|floatformat:0|intcomma }}
+              </div>
+              <div style="font-size:10px;color:#7B8C9E;text-transform:uppercase">Solde restant (FCFA)</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div style="background:#E8F5E9;border-radius:8px;padding:12px">
+              <div class="text-money" style="font-size:16px;font-weight:700;color:#2E7D32">
+                {{ loan.total_paid|floatformat:0|intcomma }}
+              </div>
+              <div style="font-size:10px;color:#7B8C9E;text-transform:uppercase">Déjà payé (FCFA)</div>
+            </div>
+          </div>
+        </div>
+        <div class="mb-1 d-flex justify-content-between">
+          <small class="text-muted">Taux de recouvrement</small>
+          <small class="fw-bold mono">{{ loan.recovery_rate|floatformat:1 }}%</small>
+        </div>
+        <div class="progress-custom mb-4">
+          <div class="progress-bar bg-success" style="width:{{ loan.recovery_rate|floatformat:0 }}%"></div>
+        </div>
+
+        <!-- Upcoming installments -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#7B8C9E;margin-bottom:8px">
+          Prochaines échéances
+        </div>
+        {% for item in loan.schedule.all|slice:":5" %}
+        {% if item.status in 'pending,partial,overdue' %}
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+          <div>
+            <div style="font-size:12px;font-weight:600">N° {{ item.installment_number }}</div>
+            <div style="font-size:11px;color:{% if item.is_overdue %}#C62828{% else %}#7B8C9E{% endif %}">
+              {{ item.due_date|date:"d/m/Y" }}
+              {% if item.is_overdue %}<span class="badge bg-danger ms-1" style="font-size:9px">Retard</span>{% endif %}
+            </div>
+          </div>
+          <div class="text-money" style="font-size:12px;font-weight:700">
+            {{ item.amount_due|floatformat:0|intcomma }} FCFA
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fillAmount(amount) {
+  document.getElementById('id_amount_paid').value = amount;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,352 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+
+{% block title %}Nouvelle demande de prêt — MicroFinance{% endblock %}
+{% block topbar_title %}Demande de prêt{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'loans:list' %}">Prêts</a></li>
+        <li class="breadcrumb-item active">Nouvelle demande</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">Nouvelle demande de prêt</h1>
+    <p class="page-subtitle">Remplissez le formulaire pour soumettre une demande</p>
+  </div>
+</div>
+
+<form method="post" novalidate id="loanForm">
+  {% csrf_token %}
+  <div class="row g-4">
+
+    <!-- LEFT: Form -->
+    <div class="col-12 col-xl-7">
+
+      <!-- Client & Product -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h3 class="card-title"><i class="bi bi-person-check me-2 text-primary"></i>Sélection client & produit</h3>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Client *</label>
+              {{ form.client }}
+              {% if form.client.errors %}<div class="text-danger small mt-1">{{ form.client.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Produit de prêt *</label>
+              {{ form.product }}
+              {% if form.product.errors %}<div class="text-danger small mt-1">{{ form.product.errors.0 }}</div>{% endif %}
+              <!-- Product details -->
+              <div id="productInfo" class="mt-2 p-3 rounded" style="background:#F0F4F8;display:none">
+                <div class="row g-2" style="font-size:12px">
+                  <div class="col-6"><span class="text-muted">Montant :</span> <strong id="pi-range">—</strong></div>
+                  <div class="col-6"><span class="text-muted">Durée :</span> <strong id="pi-duration">—</strong></div>
+                  <div class="col-6"><span class="text-muted">Taux annuel :</span> <strong id="pi-rate">—</strong></div>
+                  <div class="col-6"><span class="text-muted">Amortissement :</span> <strong id="pi-amort">—</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loan Terms -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h3 class="card-title"><i class="bi bi-cash-stack me-2 text-primary"></i>Conditions du prêt</h3>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label">Montant demandé (FCFA) *</label>
+              {{ form.requested_amount }}
+              {% if form.requested_amount.errors %}<div class="text-danger small mt-1">{{ form.requested_amount.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Durée (mois) *</label>
+              {{ form.duration_months }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Objet du prêt *</label>
+              {{ form.purpose }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collateral -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h3 class="card-title"><i class="bi bi-shield-check me-2 text-primary"></i>Garantie (optionnel)</h3>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Description de la garantie</label>
+              {{ form.collateral_description }}
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Valeur estimée (FCFA)</label>
+              {{ form.collateral_value }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Guarantor -->
+      <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title"><i class="bi bi-person-plus me-2 text-primary"></i>Garant</h3>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="hasGuarantor" name="has_guarantor">
+            <label class="form-check-label" for="hasGuarantor">Ajouter un garant</label>
+          </div>
+        </div>
+        <div class="card-body" id="guarantorFields" style="display:none">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label">Nom complet *</label>
+              {{ guarantor_form.full_name }}
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">CNI *</label>
+              {{ guarantor_form.national_id }}
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Téléphone</label>
+              {{ guarantor_form.phone }}
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Relation</label>
+              {{ guarantor_form.relationship }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Adresse</label>
+              {{ guarantor_form.address }}
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Revenu mensuel (FCFA)</label>
+              {{ guarantor_form.monthly_income }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <label class="form-label">Notes internes</label>
+          {{ form.notes }}
+        </div>
+      </div>
+
+      <div class="d-flex gap-3">
+        <a href="{% url 'loans:list' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-x me-1"></i>Annuler
+        </a>
+        <button type="submit" class="btn btn-primary px-4">
+          <i class="bi bi-send me-2"></i>Soumettre la demande
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT: Live Simulator -->
+    <div class="col-12 col-xl-5">
+      <div style="position:sticky;top:80px">
+        <div class="card" id="simulatorCard">
+          <div class="card-header" style="background:var(--brand-dark)">
+            <h3 class="card-title" style="color:white">
+              <i class="bi bi-calculator me-2"></i>Simulateur d'échéancier
+            </h3>
+          </div>
+          <div class="card-body">
+            <div id="simLoading" style="display:none;text-align:center;padding:40px">
+              <div class="spinner-border spinner-border-sm text-primary mb-2"></div>
+              <div style="font-size:12px;color:#7B8C9E">Calcul en cours...</div>
+            </div>
+            <div id="simEmpty" style="text-align:center;padding:40px;color:#7B8C9E">
+              <i class="bi bi-calculator" style="font-size:36px;display:block;margin-bottom:8px;color:#E8EDF2"></i>
+              <p style="font-size:13px">Renseignez le montant, la durée et le produit pour voir la simulation</p>
+            </div>
+            <div id="simResult" style="display:none">
+              <!-- Summary -->
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <div style="background:#E3F2FD;border-radius:10px;padding:14px;text-align:center">
+                    <div id="sim-payment" class="text-money" style="font-size:18px;font-weight:700;color:#1565C0">—</div>
+                    <div style="font-size:10px;text-transform:uppercase;color:#7B8C9E;margin-top:2px">Mensualité (FCFA)</div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div style="background:#FFF3E0;border-radius:10px;padding:14px;text-align:center">
+                    <div id="sim-interest" class="text-money" style="font-size:18px;font-weight:700;color:#E65100">—</div>
+                    <div style="font-size:10px;text-transform:uppercase;color:#7B8C9E;margin-top:2px">Total intérêts (FCFA)</div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div style="background:#F8FAFC;border:1px solid #E8EDF2;border-radius:10px;padding:14px;text-align:center">
+                    <div id="sim-total" class="text-money" style="font-size:20px;font-weight:700;color:var(--brand-dark)">—</div>
+                    <div style="font-size:10px;text-transform:uppercase;color:#7B8C9E;margin-top:2px">Total à rembourser (FCFA)</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mini schedule (first 6) -->
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#7B8C9E;margin-bottom:6px">
+                Aperçu échéancier (6 premières échéances)
+              </div>
+              <div style="max-height:260px;overflow-y:auto;border:1px solid #E8EDF2;border-radius:8px">
+                <table style="width:100%;border-collapse:collapse">
+                  <thead style="background:#F8FAFC;position:sticky;top:0">
+                    <tr>
+                      <th style="padding:6px 10px;font-size:10px;text-transform:uppercase;color:#7B8C9E;border-bottom:1px solid #E8EDF2;text-align:left">N°</th>
+                      <th style="padding:6px 10px;font-size:10px;text-transform:uppercase;color:#7B8C9E;border-bottom:1px solid #E8EDF2;text-align:right">Mensualité</th>
+                      <th style="padding:6px 10px;font-size:10px;text-transform:uppercase;color:#7B8C9E;border-bottom:1px solid #E8EDF2;text-align:right">Principal</th>
+                      <th style="padding:6px 10px;font-size:10px;text-transform:uppercase;color:#7B8C9E;border-bottom:1px solid #E8EDF2;text-align:right;color:#E65100">Intérêt</th>
+                      <th style="padding:6px 10px;font-size:10px;text-transform:uppercase;color:#7B8C9E;border-bottom:1px solid #E8EDF2;text-align:right">Solde</th>
+                    </tr>
+                  </thead>
+                  <tbody id="simTableBody"></tbody>
+                </table>
+              </div>
+              <div id="simMoreInfo" style="text-align:center;font-size:11px;color:#7B8C9E;margin-top:6px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Product data from backend
+const productData = {
+  {% for p in products %}
+  "{{ p.pk }}": {
+    min_amount: {{ p.min_amount }},
+    max_amount: {{ p.max_amount }},
+    min_dur: {{ p.min_duration_months }},
+    max_dur: {{ p.max_duration_months }},
+    rate: {{ p.annual_interest_rate }},
+    amort: "{{ p.get_amortization_type_display }}",
+    monthly_rate: {{ p.annual_interest_rate }} / 12 / 100,
+  },
+  {% endfor %}
+};
+
+const fmt = n => new Intl.NumberFormat('fr-FR').format(Math.round(n));
+
+let simTimer = null;
+
+function updateSimulator() {
+  const amount = parseFloat(document.getElementById('id_requested_amount').value) || 0;
+  const duration = parseInt(document.getElementById('id_duration_months').value) || 0;
+  const productId = document.getElementById('id_product').value;
+  const product = productData[productId];
+
+  document.getElementById('simEmpty').style.display = 'none';
+  document.getElementById('simResult').style.display = 'none';
+
+  if (!amount || !duration || !product) {
+    document.getElementById('simEmpty').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('simLoading').style.display = 'block';
+  clearTimeout(simTimer);
+
+  simTimer = setTimeout(() => {
+    const rate = product.monthly_rate;
+    const n = duration;
+    const amortType = document.getElementById('id_product').selectedOptions[0]?.text?.toLowerCase() || '';
+
+    let schedule = [];
+    let balance = amount;
+
+    // Constant annuity
+    let monthly = 0;
+    if (rate > 0) {
+      monthly = amount * (rate * Math.pow(1+rate, n)) / (Math.pow(1+rate, n) - 1);
+    } else {
+      monthly = amount / n;
+    }
+
+    for (let i = 1; i <= n; i++) {
+      const interest = balance * rate;
+      const principal = monthly - interest;
+      balance = Math.max(balance - principal, 0);
+      schedule.push({ i, payment: monthly, principal, interest, balance });
+    }
+
+    const totalInterest = schedule.reduce((s, r) => s + r.interest, 0);
+    const totalRepayable = amount + totalInterest;
+
+    document.getElementById('sim-payment').textContent = fmt(monthly);
+    document.getElementById('sim-interest').textContent = fmt(totalInterest);
+    document.getElementById('sim-total').textContent = fmt(totalRepayable);
+
+    // Render mini table
+    const tbody = document.getElementById('simTableBody');
+    tbody.innerHTML = '';
+    const preview = schedule.slice(0, 8);
+    preview.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid #F0F4F8';
+      tr.innerHTML = `
+        <td style="padding:6px 10px;font-size:11px;font-family:var(--font-mono)">${row.i}</td>
+        <td style="padding:6px 10px;font-size:11px;font-family:var(--font-mono);text-align:right;font-weight:600">${fmt(row.payment)}</td>
+        <td style="padding:6px 10px;font-size:11px;font-family:var(--font-mono);text-align:right">${fmt(row.principal)}</td>
+        <td style="padding:6px 10px;font-size:11px;font-family:var(--font-mono);text-align:right;color:#E65100">${fmt(row.interest)}</td>
+        <td style="padding:6px 10px;font-size:11px;font-family:var(--font-mono);text-align:right;color:#7B8C9E">${fmt(row.balance)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    if (schedule.length > 8) {
+      document.getElementById('simMoreInfo').textContent =
+        `+ ${schedule.length - 8} échéances supplémentaires`;
+    } else {
+      document.getElementById('simMoreInfo').textContent = '';
+    }
+
+    document.getElementById('simLoading').style.display = 'none';
+    document.getElementById('simResult').style.display = 'block';
+  }, 400);
+}
+
+// Product info banner
+function updateProductInfo() {
+  const productId = document.getElementById('id_product').value;
+  const product = productData[productId];
+  const info = document.getElementById('productInfo');
+  if (product) {
+    document.getElementById('pi-range').textContent =
+      fmt(product.min_amount) + ' – ' + fmt(product.max_amount) + ' FCFA';
+    document.getElementById('pi-duration').textContent =
+      product.min_dur + ' – ' + product.max_dur + ' mois';
+    document.getElementById('pi-rate').textContent = product.rate + '%';
+    document.getElementById('pi-amort').textContent = product.amort;
+    info.style.display = 'block';
+  } else {
+    info.style.display = 'none';
+  }
+  updateSimulator();
+}
+
+document.getElementById('id_product').addEventListener('change', updateProductInfo);
+document.getElementById('id_requested_amount').addEventListener('input', updateSimulator);
+document.getElementById('id_duration_months').addEventListener('input', updateSimulator);
+
+// Guarantor toggle
+document.getElementById('hasGuarantor').addEventListener('change', function() {
+  document.getElementById('guarantorFields').style.display = this.checked ? 'block' : 'none';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+{% block title %}Paiements — MicroFinance{% endblock %}
+{% block topbar_title %}Paiements{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Historique des paiements</h1>
+    <p class="page-subtitle">Total encaissé : <strong class="text-money">{{ total_payments|floatformat:0|intcomma }} FCFA</strong></p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body p-0">
+    <table class="data-table">
+      <thead>
+        <tr><th>Date</th><th>Prêt</th><th>Client</th><th>Montant</th><th>Principal</th><th>Intérêt</th><th>Mode</th><th>Référence</th><th>Agent</th></tr>
+      </thead>
+      <tbody>
+        {% for p in page_obj %}
+        <tr>
+          <td style="font-size:13px">{{ p.payment_date|date:"d/m/Y" }}</td>
+          <td><a href="{% url 'loans:detail' p.loan.pk %}" class="mono" style="font-size:12px;font-weight:700;color:#1565C0">{{ p.loan.loan_number }}</a></td>
+          <td style="font-size:13px">{{ p.loan.client.full_name }}</td>
+          <td class="text-money" style="font-size:14px;font-weight:700;color:#2E7D32">{{ p.amount_paid|floatformat:0|intcomma }} FCFA</td>
+          <td class="mono" style="font-size:12px">{{ p.principal_paid|floatformat:0|intcomma }}</td>
+          <td class="mono" style="font-size:12px;color:#E65100">{{ p.interest_paid|floatformat:0|intcomma }}</td>
+          <td><span class="badge bg-secondary-subtle text-secondary" style="font-size:11px">{{ p.get_payment_method_display }}</span></td>
+          <td style="font-size:11px;color:#7B8C9E">{{ p.reference|default:"—" }}</td>
+          <td style="font-size:12px">{{ p.collected_by.username|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" class="text-center py-5 text-muted">Aucun paiement enregistré</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

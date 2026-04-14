@@ -1,0 +1,200 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+
+{% block title %}Clients — MicroFinance{% endblock %}
+{% block topbar_title %}Clients{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Gestion des clients</h1>
+    <p class="page-subtitle">{{ total_count }} client{{ total_count|pluralize }} enregistré{{ total_count|pluralize }}</p>
+  </div>
+  <a href="{% url 'clients:create' %}" class="btn btn-primary">
+    <i class="bi bi-person-plus me-2"></i>Nouveau client
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        {{ form.q }}
+      </div>
+      <div class="col-6 col-md-2">
+        {{ form.employment_type }}
+      </div>
+      <div class="col-6 col-md-2">
+        {{ form.city }}
+      </div>
+      <div class="col-6 col-md-2">
+        {{ form.is_active }}
+      </div>
+      <div class="col-6 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+          <i class="bi bi-search me-1"></i>Filtrer
+        </button>
+        <a href="{% url 'clients:list' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-x"></i>
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="card-body p-0">
+    {% if page_obj.object_list %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Contact</th>
+          <th>Activité</th>
+          <th>Revenus mensuels</th>
+          <th>Score crédit</th>
+          <th>Prêts</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for client in page_obj %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="user-avatar" style="width:36px;height:36px;font-size:13px;
+                background:{% if client.is_active %}#E3F2FD{% else %}#F5F5F5{% endif %};
+                color:{% if client.is_active %}#1565C0{% else %}#9E9E9E{% endif %};">
+                {{ client.first_name|slice:":1" }}{{ client.last_name|slice:":1" }}
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:14px">{{ client.full_name }}</div>
+                <div style="font-size:11px;color:#7B8C9E">{{ client.national_id }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div style="font-size:13px">{{ client.phone }}</div>
+            {% if client.email %}
+            <div style="font-size:11px;color:#7B8C9E">{{ client.email }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <div style="font-size:13px">{{ client.get_employment_type_display }}</div>
+            <div style="font-size:11px;color:#7B8C9E">{{ client.city }}</div>
+          </td>
+          <td>
+            <span class="text-money" style="font-size:13px">
+              {{ client.monthly_income|floatformat:0|intcomma }}
+            </span>
+            <span style="font-size:11px;color:#7B8C9E"> FCFA</span>
+          </td>
+          <td>
+            {% if client.credit_score %}
+              {% with label=client.credit_score_label %}
+              <div class="d-flex align-items-center gap-2">
+                <div style="position:relative;width:36px;height:36px">
+                  <svg viewBox="0 0 36 36" style="transform:rotate(-90deg);width:36px;height:36px">
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="#E8EDF2" stroke-width="3"/>
+                    <circle cx="18" cy="18" r="14" fill="none"
+                      stroke="{% if label.1 == 'success' %}#2E7D32{% elif label.1 == 'info' %}#1565C0{% elif label.1 == 'warning' %}#F9A825{% else %}#C62828{% endif %}"
+                      stroke-width="3"
+                      stroke-dasharray="{{ client.credit_score|floatformat:2|stringformat:'s' }} 1"
+                      stroke-dasharray="{% widthratio client.credit_score 1 87.96 %} 87.96"
+                      stroke-linecap="round"/>
+                  </svg>
+                  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:8px;font-weight:700;font-family:var(--font-mono)">
+                    {{ client.credit_score|floatformat:0|stringformat:'s' }}
+                  </div>
+                </div>
+                <div>
+                  <span class="badge bg-{{ label.1 }}-subtle text-{{ label.1 }}" style="font-size:10px">
+                    {{ label.0 }}
+                  </span>
+                  <div style="font-size:10px;color:#7B8C9E;font-family:var(--font-mono)">
+                    {{ client.credit_score|floatformat:1 }}%
+                  </div>
+                </div>
+              </div>
+              {% endwith %}
+            {% else %}
+              <span class="text-muted" style="font-size:12px">Non évalué</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge bg-primary" style="font-size:11px">{{ client.loans_count }}</span>
+            {% if client.active_loans > 0 %}
+            <span class="badge bg-success ms-1" style="font-size:11px">{{ client.active_loans }} actif{{ client.active_loans|pluralize }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if client.is_active %}
+            <span class="status-badge active">Actif</span>
+            {% else %}
+            <span class="status-badge rejected">Inactif</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{% url 'clients:detail' client.pk %}" class="btn btn-sm btn-outline-primary" title="Détail">
+                <i class="bi bi-eye"></i>
+              </a>
+              <a href="{% url 'loans:create' %}?client={{ client.pk }}" class="btn btn-sm btn-outline-success" title="Nouveau prêt">
+                <i class="bi bi-plus"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="d-flex justify-content-between align-items-center px-4 py-3 border-top">
+      <small class="text-muted">
+        Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+      </small>
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+          {% endif %}
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ num }}&{{ request.GET.urlencode }}">{{ num }}</a>
+            </li>
+            {% endif %}
+          {% endfor %}
+          {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-people"></i>
+      <p>Aucun client trouvé</p>
+      <a href="{% url 'clients:create' %}" class="btn btn-primary btn-sm mt-2">Ajouter un client</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

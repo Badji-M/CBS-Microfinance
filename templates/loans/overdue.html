@@ -1,0 +1,98 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+{% block title %}Impayés — MicroFinance{% endblock %}
+{% block topbar_title %}Impayés{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title" style="color:#C62828">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>Prêts en souffrance
+    </h1>
+    <p class="page-subtitle">
+      Total en souffrance :
+      <strong class="text-money" style="color:#C62828">{{ total_overdue|floatformat:0|intcomma }} FCFA</strong>
+    </p>
+  </div>
+</div>
+
+{% if loans_overdue %}
+{% for entry in loans_overdue %}
+<div class="card mb-3" style="border-left:4px solid #C62828">
+  <div class="card-body">
+    <div class="d-flex align-items-start justify-content-between mb-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="user-avatar" style="background:#FFEBEE;color:#C62828;width:44px;height:44px;font-size:15px">
+          {{ entry.loan.client.first_name|slice:":1" }}{{ entry.loan.client.last_name|slice:":1" }}
+        </div>
+        <div>
+          <div style="font-size:15px;font-weight:700">{{ entry.loan.client.full_name }}</div>
+          <div style="font-size:12px;color:#7B8C9E">
+            <span class="mono">{{ entry.loan.loan_number }}</span> —
+            {{ entry.loan.client.phone }}
+          </div>
+        </div>
+      </div>
+      <div class="text-end">
+        <div class="text-money" style="font-size:18px;font-weight:700;color:#C62828">
+          {{ entry.total_due|floatformat:0|intcomma }} FCFA
+        </div>
+        <div style="font-size:11px;color:#7B8C9E">en souffrance</div>
+      </div>
+    </div>
+
+    <table class="data-table" style="margin-bottom:0">
+      <thead>
+        <tr>
+          <th>Échéance</th>
+          <th>Date due</th>
+          <th>Montant dû</th>
+          <th>Déjà payé</th>
+          <th>Restant</th>
+          <th>Jours de retard</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in entry.items %}
+        <tr>
+          <td class="mono" style="font-size:12px">N° {{ item.installment_number }}</td>
+          <td style="font-size:12px;color:#C62828;font-weight:600">{{ item.due_date|date:"d/m/Y" }}</td>
+          <td class="mono" style="font-size:12px">{{ item.amount_due|floatformat:0|intcomma }} FCFA</td>
+          <td class="mono" style="font-size:12px;color:#2E7D32">
+            {% if item.amount_paid > 0 %}{{ item.amount_paid|floatformat:0|intcomma }}{% else %}—{% endif %}
+          </td>
+          <td class="text-money" style="font-size:12px;font-weight:700;color:#C62828">
+            {{ item.remaining_amount|floatformat:0|intcomma }} FCFA
+          </td>
+          <td>
+            <span class="badge bg-danger">
+              {{ today|timeuntil:item.due_date|default:"-" }}
+              {{ item.due_date|timesince:today }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="mt-3 d-flex justify-content-end">
+      <a href="{% url 'loans:payment' entry.loan.pk %}" class="btn btn-danger btn-sm me-2">
+        <i class="bi bi-cash-coin me-1"></i>Enregistrer paiement
+      </a>
+      <a href="{% url 'loans:detail' entry.loan.pk %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-eye me-1"></i>Voir le prêt
+      </a>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card">
+  <div class="empty-state py-5">
+    <i class="bi bi-check-circle-fill text-success" style="font-size:48px;margin-bottom:16px;display:block"></i>
+    <p style="font-size:16px;font-weight:600;color:#2E7D32">Aucun impayé enregistré</p>
+    <p class="text-muted">Tous les prêts sont à jour !</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

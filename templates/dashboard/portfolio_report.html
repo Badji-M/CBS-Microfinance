@@ -1,0 +1,130 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+{% load dashboard_filters %}
+{% block title %}Rapport portefeuille — MicroFinance{% endblock %}
+{% block topbar_title %}Rapport portefeuille{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Rapport de performance du portefeuille</h1>
+    <p class="page-subtitle">Analyse PAR (Portfolio at Risk) par tranche de jours</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  {% for bucket, count in par_buckets.items %}
+  <div class="col-6 col-xl-3">
+    <div class="kpi-card {% if bucket == '1-30' %}gold{% elif bucket == '31-60' %}orange{% else %}dark{% endif %}">
+      <div class="kpi-icon {% if bucket == '1-30' %}gold{% elif bucket == '31-60' %}orange{% else %}dark{% endif %}">
+        <i class="bi bi-clock-history"></i>
+      </div>
+      <div class="kpi-value mono" style="font-size:24px">{{ count }}</div>
+      <div class="kpi-label">PAR {{ bucket }} jours</div>
+      <div style="font-size:12px;color:#7B8C9E;margin-top:4px" class="mono">
+        {{ par_amounts|get_item:bucket|floatformat:0|intcomma }} FCFA
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="bi bi-bar-chart me-2 text-primary"></i>PAR par tranche (Nbre de prêts)</h3></div>
+      <div class="card-body">
+        <canvas id="parCountChart" height="250"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="bi bi-bar-chart me-2 text-primary"></i>PAR par tranche (Encours FCFA)</h3></div>
+      <div class="card-body">
+        <canvas id="parAmountChart" height="250"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAR interpretation table -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="bi bi-table me-2 text-primary"></i>Interprétation du PAR</h3></div>
+      <div class="card-body p-0">
+        <table class="data-table">
+          <thead><tr><th>Tranche PAR</th><th>Nbre de prêts</th><th>Encours (FCFA)</th><th>Risque</th><th>Action recommandée</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>PAR 1-30 jours</strong></td>
+              <td class="mono">{{ par_buckets|get_item:"1-30" }}</td>
+              <td class="mono">{{ par_amounts|get_item:"1-30"|floatformat:0|intcomma }}</td>
+              <td><span class="badge bg-warning text-dark">Modéré</span></td>
+              <td style="font-size:12px">Relance téléphonique, rappel SMS</td>
+            </tr>
+            <tr>
+              <td><strong>PAR 31-60 jours</strong></td>
+              <td class="mono">{{ par_buckets|get_item:"31-60" }}</td>
+              <td class="mono">{{ par_amounts|get_item:"31-60"|floatformat:0|intcomma }}</td>
+              <td><span class="badge bg-orange" style="background:#E65100;color:white">Élevé</span></td>
+              <td style="font-size:12px">Visite terrain, plan de restructuration</td>
+            </tr>
+            <tr>
+              <td><strong>PAR 61-90 jours</strong></td>
+              <td class="mono">{{ par_buckets|get_item:"61-90" }}</td>
+              <td class="mono">{{ par_amounts|get_item:"61-90"|floatformat:0|intcomma }}</td>
+              <td><span class="badge bg-danger">Critique</span></td>
+              <td style="font-size:12px">Mise en demeure, saisie de garanties</td>
+            </tr>
+            <tr>
+              <td><strong>PAR 90+ jours</strong></td>
+              <td class="mono">{{ par_buckets|get_item:"90+" }}</td>
+              <td class="mono">{{ par_amounts|get_item:"90+"|floatformat:0|intcomma }}</td>
+              <td><span class="badge bg-dark">Perte potentielle</span></td>
+              <td style="font-size:12px">Provisionnement, procédure judiciaire</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const parData = {{ par_chart_data|safe }};
+const colors = ['#F9A825', '#E65100', '#C62828', '#4A148C'];
+
+new Chart(document.getElementById('parCountChart'), {
+  type: 'bar',
+  data: {
+    labels: parData.labels,
+    datasets: [{ label: 'Nbre de prêts', data: parData.counts, backgroundColor: colors, borderRadius: 6 }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { grid: { display: false } } }
+  }
+});
+
+new Chart(document.getElementById('parAmountChart'), {
+  type: 'bar',
+  data: {
+    labels: parData.labels,
+    datasets: [{ label: 'Encours (FCFA)', data: parData.amounts, backgroundColor: colors, borderRadius: 6 }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: ctx => new Intl.NumberFormat('fr-FR').format(ctx.raw) + ' FCFA' } }
+    },
+    scales: {
+      y: { beginAtZero: true, ticks: { callback: v => new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format(v) } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+</script>
+{% endblock %}

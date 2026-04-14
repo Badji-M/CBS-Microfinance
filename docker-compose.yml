@@ -1,0 +1,100 @@
+version: '3.9'
+
+services:
+  # ── Application Django ──────────────────────
+  web:
+    build: .
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
+    volumes:
+      - media_files:/app/media
+      - ml_models:/app/ml_models
+      - static_files:/app/staticfiles
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://microfinance:${DB_PASSWORD:-microfinance123}@db:5432/microfinance
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── PostgreSQL ──────────────────────────────
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: microfinance
+      POSTGRES_USER: microfinance
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-microfinance123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U microfinance"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Redis (Broker Celery) ───────────────────
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # ── Celery Worker ───────────────────────────
+  celery:
+    build: .
+    command: celery -A config worker --loglevel=info --concurrency=2
+    volumes:
+      - media_files:/app/media
+      - ml_models:/app/ml_models
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://microfinance:${DB_PASSWORD:-microfinance123}@db:5432/microfinance
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+      - web
+    restart: unless-stopped
+
+  # ── Celery Beat (Scheduler) ─────────────────
+  # celery-beat:
+  #   build: .
+  #   command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+  #   volumes:
+  #     - media_files:/app/media
+  #   env_file: .env
+  #   environment:
+  #     - DATABASE_URL=postgresql://microfinance:${DB_PASSWORD:-microfinance123}@db:5432/microfinance
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #   depends_on:
+  #     - db
+  #     - redis
+  #   restart: unless-stopped
+
+  # ── Nginx (Reverse Proxy) ───────────────────
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_files:/var/www/static:ro
+      - media_files:/var/www/media:ro
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_files:
+  ml_models:
+  static_files:

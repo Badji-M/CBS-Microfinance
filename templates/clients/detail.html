@@ -1,0 +1,286 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+
+{% block title %}{{ client.full_name }} — MicroFinance{% endblock %}
+{% block topbar_title %}Fiche client{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'clients:list' %}">Clients</a></li>
+        <li class="breadcrumb-item active">{{ client.full_name }}</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">{{ client.full_name }}</h1>
+    <p class="page-subtitle">Client depuis le {{ client.registration_date|date:"d F Y" }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'scoring:score_client' client.pk %}" class="btn btn-outline-info btn-sm">
+      <i class="bi bi-robot me-1"></i>Recalculer score
+    </a>
+    <a href="{% url 'clients:edit' client.pk %}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Modifier
+    </a>
+    <a href="{% url 'loans:create' %}?client={{ client.pk }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-circle me-1"></i>Nouveau prêt
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Left column: info + score -->
+  <div class="col-12 col-xl-4">
+
+    <!-- Score Card -->
+    <div class="card mb-3">
+      <div class="card-body text-center py-4">
+        {% if client.credit_score %}
+          {% with label=client.credit_score_label %}
+          <div style="position:relative;display:inline-block;margin-bottom:12px">
+            <svg viewBox="0 0 120 120" width="120" height="120">
+              <!-- Background ring -->
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#E8EDF2" stroke-width="10"
+                      transform="rotate(-90 60 60)"/>
+              <!-- Score arc -->
+              <circle cx="60" cy="60" r="50" fill="none"
+                stroke="{% if label.1 == 'success' %}#2E7D32{% elif label.1 == 'info' %}#1565C0{% elif label.1 == 'warning' %}#F9A825{% else %}#C62828{% endif %}"
+                stroke-width="10"
+                stroke-dasharray="{% widthratio client.credit_score 1 314 %} 314"
+                stroke-linecap="round"
+                transform="rotate(-90 60 60)"/>
+            </svg>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+              <div style="font-size:26px;font-weight:700;font-family:var(--font-mono);color:var(--brand-dark)">
+                {{ client.credit_score|floatformat:0 }}<span style="font-size:14px">%</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <span class="badge bg-{{ label.1 }}" style="font-size:13px;padding:6px 14px">
+              {{ label.0 }}
+            </span>
+          </div>
+          <div style="font-size:12px;color:#7B8C9E;margin-top:8px">
+            Mis à jour le {{ client.credit_score_updated_at|date:"d/m/Y H:i" }}
+          </div>
+          {% endwith %}
+        {% else %}
+          <div style="font-size:40px;color:#E8EDF2"><i class="bi bi-robot"></i></div>
+          <p class="text-muted mt-2">Score non calculé</p>
+          <a href="{% url 'scoring:score_client' client.pk %}" class="btn btn-primary btn-sm">
+            Calculer le score
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Personal Info -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="card-title"><i class="bi bi-person me-2 text-primary"></i>Informations</h3>
+      </div>
+      <div class="card-body p-0">
+        {% for label, value in info_items %}
+        {% endfor %}
+        <table style="width:100%">
+          <tr class="border-bottom">
+            <td class="px-3 py-2" style="font-size:11px;color:#7B8C9E;font-weight:600;width:40%;text-transform:uppercase">CNI</td>
+            <td class="px-3 py-2 mono" style="font-size:13px">{{ client.national_id }}</td>
+          </tr>
+          <tr class="border-bottom">
+            <td class="px-3 py-2" style="font-size:11px;color:#7B8C9E;font-weight:600;text-transform:uppercase">Âge</td>
+            <td class="px-3 py-2" style="font-size:13px">{{ client.age }} ans</td>
+          </tr>
+          <tr class="border-bottom">
+            <td class="px-3 py-2" style="font-size:11px;color:#7B8C9E;font-weight:600;text-transform:uppercase">Téléphone</td>
+            <td class="px-3 py-2" style="font-size:13px">{{ client.phone }}</td>
+          </tr>
+          <tr class="border-bottom">
+            <td class="px-3 py-2" style="font-size:11px;color:#7B8C9E;font-weight:600;text-transform:uppercase">Adresse</td>
+            <td class="px-3 py-2" style="font-size:12px">{{ client.address }}, {{ client.city }}</td>
+          </tr>
+          <tr class="border-bottom">
+            <td class="px-3 py-2" style="font-size:11px;color:#7B8C9E;font-weight:600;text-transform:uppercase">Emploi</td>
+            <td class="px-3 py-2" style="font-size:13px">{{ client.get_employment_type_display }}</td>
+          </tr>
+          <tr class="border-bottom">
+            <td class="px-3 py-2" style="font-size:11px;color:#7B8C9E;font-weight:600;text-transform:uppercase">Revenus</td>
+            <td class="px-3 py-2 text-money" style="font-size:13px">{{ client.monthly_income|floatformat:0|intcomma }} FCFA/mois</td>
+          </tr>
+          <tr>
+            <td class="px-3 py-2" style="font-size:11px;color:#7B8C9E;font-weight:600;text-transform:uppercase">Revenu dispo.</td>
+            <td class="px-3 py-2 text-money" style="font-size:13px;color:{% if client.disposable_income > 0 %}#2E7D32{% else %}#C62828{% endif %}">
+              {{ client.disposable_income|floatformat:0|intcomma }} FCFA/mois
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Financial KPIs -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title"><i class="bi bi-graph-up me-2 text-primary"></i>Résumé financier</h3>
+      </div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-6">
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px;text-align:center">
+              <div class="text-money" style="font-size:16px;font-weight:700">{{ total_borrowed|floatformat:0|intcomma }}</div>
+              <div style="font-size:10px;color:#7B8C9E;text-transform:uppercase">Total emprunté (FCFA)</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px;text-align:center">
+              <div class="text-money" style="font-size:16px;font-weight:700;color:#2E7D32">{{ total_paid|floatformat:0|intcomma }}</div>
+              <div style="font-size:10px;color:#7B8C9E;text-transform:uppercase">Total remboursé (FCFA)</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:20px;font-weight:700;color:#1565C0">{{ client.loan_count }}</div>
+              <div style="font-size:10px;color:#7B8C9E;text-transform:uppercase">Prêts total</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:20px;font-weight:700;color:{% if client.debt_to_income_ratio < 0.3 %}#2E7D32{% elif client.debt_to_income_ratio < 0.6 %}#F9A825{% else %}#C62828{% endif %}">
+                {{ client.debt_to_income_ratio|floatformat:2 }}
+              </div>
+              <div style="font-size:10px;color:#7B8C9E;text-transform:uppercase">Ratio dette/revenu</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Loans + Documents -->
+  <div class="col-12 col-xl-8">
+
+    <!-- Loans -->
+    <div class="card mb-3">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h3 class="card-title"><i class="bi bi-credit-card me-2 text-primary"></i>Historique des prêts</h3>
+        <a href="{% url 'loans:create' %}?client={{ client.pk }}" class="btn btn-primary btn-sm">
+          <i class="bi bi-plus me-1"></i>Nouveau prêt
+        </a>
+      </div>
+      <div class="card-body p-0">
+        {% if loans %}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>N° Prêt</th>
+              <th>Produit</th>
+              <th>Montant</th>
+              <th>Durée</th>
+              <th>Statut</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loan in loans %}
+            <tr>
+              <td class="mono" style="font-size:12px;font-weight:700">{{ loan.loan_number }}</td>
+              <td style="font-size:12px">{{ loan.product.name }}</td>
+              <td class="text-money" style="font-size:13px">{{ loan.principal|floatformat:0|intcomma }} FCFA</td>
+              <td style="font-size:12px">{{ loan.duration_months }} mois</td>
+              <td><span class="status-badge {{ loan.status }}">{{ loan.get_status_display }}</span></td>
+              <td style="font-size:12px;color:#7B8C9E">{{ loan.application_date|date:"d/m/Y" }}</td>
+              <td>
+                <a href="{% url 'loans:detail' loan.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:11px;padding:2px 8px">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state py-4">
+          <i class="bi bi-credit-card"></i>
+          <p>Aucun prêt enregistré</p>
+          <a href="{% url 'loans:create' %}?client={{ client.pk }}" class="btn btn-primary btn-sm mt-2">
+            Créer un prêt
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Documents -->
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h3 class="card-title"><i class="bi bi-file-earmark me-2 text-primary"></i>Documents</h3>
+        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+          <i class="bi bi-upload me-1"></i>Ajouter
+        </button>
+      </div>
+      <div class="card-body">
+        {% if documents %}
+        <div class="row g-2">
+          {% for doc in documents %}
+          <div class="col-12 col-md-6">
+            <div style="background:#F8FAFC;border:1px solid #E8EDF2;border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px">
+              <div style="font-size:24px;color:#1565C0">
+                <i class="bi bi-file-earmark-{% if doc.is_verified %}check-fill text-success{% else %}text{% endif %}"></i>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:600">{{ doc.get_doc_type_display }}</div>
+                <div style="font-size:11px;color:#7B8C9E">{{ doc.uploaded_at|date:"d/m/Y" }}</div>
+              </div>
+              <a href="{{ doc.file.url }}" class="btn btn-sm btn-outline-secondary ms-auto" target="_blank">
+                <i class="bi bi-download"></i>
+              </a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state py-3">
+          <i class="bi bi-folder2"></i>
+          <p>Aucun document</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'clients:upload_document' client.pk %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Ajouter un document</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Type de document</label>
+            {{ doc_form.doc_type }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Fichier</label>
+            <input type="file" name="file" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            {{ doc_form.description }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Téléverser</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

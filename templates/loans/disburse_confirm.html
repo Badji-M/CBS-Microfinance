@@ -1,0 +1,49 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+{% block title %}Décaissement {{ loan.loan_number }}{% endblock %}
+{% block topbar_title %}Décaissement{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-6">
+    <div class="card mt-4" style="border-top:4px solid #2E7D32">
+      <div class="card-header">
+        <h3 class="card-title"><i class="bi bi-cash-coin me-2 text-success"></i>Confirmer le décaissement</h3>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-success">
+          <strong>⚠️ Action irréversible.</strong> Le décaissement va créer l'échéancier de remboursement et activer le prêt.
+        </div>
+        <table style="width:100%;font-size:14px" class="mb-4">
+          <tr class="border-bottom">
+            <td class="py-2 text-muted">Prêt</td>
+            <td class="py-2 fw-bold mono">{{ loan.loan_number }}</td>
+          </tr>
+          <tr class="border-bottom">
+            <td class="py-2 text-muted">Client</td>
+            <td class="py-2 fw-bold">{{ loan.client.full_name }}</td>
+          </tr>
+          <tr class="border-bottom">
+            <td class="py-2 text-muted">Montant approuvé</td>
+            <td class="py-2 fw-bold text-money">{{ loan.approved_amount|floatformat:0|intcomma }} FCFA</td>
+          </tr>
+          <tr class="border-bottom">
+            <td class="py-2 text-muted">Durée</td>
+            <td class="py-2 fw-bold">{{ loan.duration_months }} mois</td>
+          </tr>
+          <tr>
+            <td class="py-2 text-muted">Date décaissement</td>
+            <td class="py-2 fw-bold">{{ loan.disbursement_date|date:"d/m/Y"|default:"Aujourd'hui" }}</td>
+          </tr>
+        </table>
+        <form method="post" class="d-flex gap-3">
+          {% csrf_token %}
+          <a href="{% url 'loans:detail' loan.pk %}" class="btn btn-outline-secondary">Annuler</a>
+          <button type="submit" class="btn btn-success ms-auto px-4">
+            <i class="bi bi-cash-coin me-2"></i>Décaisser et générer l'échéancier
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

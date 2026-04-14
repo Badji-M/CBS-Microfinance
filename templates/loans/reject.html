@@ -1,0 +1,47 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+{% block title %}Rejeter {{ loan.loan_number }}{% endblock %}
+{% block topbar_title %}Rejet de prêt{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'loans:list' %}">Prêts</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'loans:detail' loan.pk %}">{{ loan.loan_number }}</a></li>
+        <li class="breadcrumb-item active">Rejet</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">Rejet de la demande</h1>
+  </div>
+</div>
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-6">
+    <div class="card" style="border-top:4px solid #C62828">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <div style="font-size:40px">❌</div>
+          <div>
+            <div style="font-size:16px;font-weight:700">{{ loan.loan_number }}</div>
+            <div style="color:#7B8C9E">{{ loan.client.full_name }} — {{ loan.requested_amount|floatformat:0|intcomma }} FCFA</div>
+          </div>
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-4">
+            <label class="form-label">Motif de rejet *</label>
+            {{ form.rejection_reason }}
+            <small class="text-muted">Ce motif sera communiqué au client et conservé dans le dossier.</small>
+          </div>
+          <div class="d-flex gap-3">
+            <a href="{% url 'loans:detail' loan.pk %}" class="btn btn-outline-secondary">Annuler</a>
+            <button type="submit" class="btn btn-danger ms-auto">
+              <i class="bi bi-x-circle me-2"></i>Confirmer le rejet
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
