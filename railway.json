@@ -5,6 +5,6 @@
   },
   "deploy": {
     "startCommand": "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile -",
-    "preDeployCommand": "python manage.py migrate && python -c \"from django.contrib.auth.models import User; User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@microfinance.local', 'admin123'); print('✅ Database initialized')\""
+    "preDeployCommand": "python manage.py migrate && python -c \"import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings'); django.setup(); from django.contrib.auth.models import User; User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@microfinance.local', 'admin123'); print('✅ Database initialized')\""
   }
 }
