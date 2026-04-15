@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: cbs-microfinance
+    runtime: python311
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py shell -c "from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'admin@example.com', 'admin123') if not User.objects.filter(username='admin').exists() else None; print('✅ Database ready')"
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:10000 --workers 4 --timeout 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DEBUG
+        value: false
+      - key: ALLOWED_HOSTS
+        value: cbs-microfinance.onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://cbs-microfinance.onrender.com
+      - key: SECURE_SSL_REDIRECT
+        value: true
+      - key: SESSION_COOKIE_SECURE
+        value: true
+      - key: CSRF_COOKIE_SECURE
+        value: true
+    databases:
+      - name: postgres_db
+        databaseName: microfinance_db
+        user: microfinance_user
