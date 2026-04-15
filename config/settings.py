@@ -10,8 +10,16 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-microfinance-dev-key-change-in-production')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'https://cbs-microfinance-production.up.railway.app,http://localhost:8000').split(',')
+
+# ALLOWED_HOSTS - accepte localhost, 127.0.0.1, et domaines custom
+ALLOWED_HOSTS_STR = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STR.split(',')]
+
+# Si en production, ajoute les domaines génériques
+if not DEBUG:
+    ALLOWED_HOSTS.extend(['*.onrender.com', '*.railway.app', '*.herokuapp.com'])
+
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'https://localhost:3000,http://localhost:8000').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
