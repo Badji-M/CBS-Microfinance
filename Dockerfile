@@ -26,8 +26,8 @@ COPY . .
 # Répertoires persistants
 RUN mkdir -p /app/media/contracts /app/ml_models /app/staticfiles
 
-# Fichiers statiques
-RUN python manage.py collectstatic --noinput
+# Fichiers statiques (optionnel, peut échouer sans env)
+RUN python manage.py collectstatic --noinput || echo "⚠️  Collectstatic échoué (normal si env incomplete)"
 
 # Script d'initialisation
 COPY entrypoint.sh /entrypoint.sh
