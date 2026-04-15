@@ -18,6 +18,11 @@ python manage.py migrate --run-syncdb 2>&1 || echo "⚠️  Sync failed, continu
 
 echo "Step 4: Creating superuser if needed..."
 python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+
 from django.contrib.auth.models import User
 try:
     if not User.objects.filter(username='admin').exists():
