@@ -7,11 +7,14 @@ echo "============================================================"
 
 cd /app
 
-echo "Step 1: Applying migrations for migrated apps (auth, admin, etc)..."
-python manage.py migrate
+echo "Step 1: Checking database connection..."
+python -c "import os; print(f'DATABASE_URL: {os.getenv(\"DATABASE_URL\", \"NOT SET\")[:50]}...')" || true
 
-echo "Step 2: Creating tables for unmigrated apps..."
-python manage.py migrate --run-syncdb
+echo "Step 2: Applying migrations for migrated apps (auth, admin, etc)..."
+python manage.py migrate 2>&1 || echo "⚠️  Migration failed, continuing..."
+
+echo "Step 3: Creating tables for unmigrated apps..."
+python manage.py migrate --run-syncdb 2>&1 || echo "⚠️  Sync failed, continuing..."
 
 echo "Creating superuser if needed..."
 python manage.py shell << EOF
