@@ -17,7 +17,7 @@ echo "Step 3: Creating tables for unmigrated apps..."
 python manage.py migrate --run-syncdb 2>&1 || echo "⚠️  Sync failed, continuing..."
 
 echo "Step 4: Creating superuser if needed..."
-python manage.py shell -c "
+python -c "
 from django.contrib.auth.models import User
 try:
     if not User.objects.filter(username='admin').exists():
