@@ -37,6 +37,9 @@ except Exception as e:
     print(f'⚠️  Error with superuser: {e}')
 " 2>&1 || echo "⚠️  Superuser creation attempt finished"
 
+echo "Step 5: Loading demo data..."
+python manage.py seed_demo --clients 50 --loans 100 2>&1 || echo "⚠️  Demo data loading (might already exist)"
+
 echo "============================================================"
 echo "Initialization complete! Starting gunicorn..."
 echo "============================================================"
